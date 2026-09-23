@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d5fb8">
+<title>Relevar pañol</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Relevar">
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#fff; --linea:#d3d8e0; --texto:#161a21;
+    --suave:#5f6875; --acento:#1d5fb8; --acento-sw:#e8f0fb;
+    --ok:#1e7a45; --alerta:#b3261e; --alerta-sw:#fdecea;
+    --r:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  /* Cualquier clase que fije `display` (nav.pie{display:flex}) le gana en
+     especificidad a la regla [hidden]{display:none} del navegador, y el
+     elemento se sigue viendo con el atributo puesto. Se pisa una vez acá
+     y vale para toda la app. */
+  [hidden]{display:none !important}
+  html,body{margin:0; height:100%}
+  body{
+    background:var(--bg); color:var(--texto);
+    font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  /* Todo grande a propósito: esto se usa parado, con una mano, con las
+     manos sucias y a veces con guantes. Un botón de 32px no se acierta. */
+  button, input, select, textarea{font:inherit; color:inherit}
+  button{cursor:pointer; border-radius:12px; border:1px solid var(--linea);
+         background:var(--panel); padding:14px 16px; min-height:52px}
+  button.pri{background:var(--acento); border-color:var(--acento); color:#fff; font-weight:600}
+  button.pri:disabled{background:#9db4d6; border-color:#9db4d6}
+  button.gigante{width:100%; min-height:62px; font-size:19px; font-weight:600}
+  input[type=text], input[type=number], input[type=search]{
+    width:100%; padding:15px 14px; border:1px solid var(--linea);
+    border-radius:12px; background:var(--panel); min-height:54px;
+  }
+  input:focus{outline:2px solid var(--acento); outline-offset:-1px}
+
+  header{
+    background:var(--panel); border-bottom:1px solid var(--linea);
+    padding:10px 14px; padding-top:calc(10px + env(safe-area-inset-top));
+    display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:10;
+  }
+  header img{height:26px}
+  header .quien{margin-left:auto; font-size:13px; color:var(--suave); text-align:right}
+  main{padding:14px; max-width:620px; margin:0 auto}
+
+  .tarjeta{
+    background:var(--panel); border:1px solid var(--linea);
+    border-radius:var(--r); padding:14px; margin-bottom:14px;
+  }
+  .rotulo{font-size:13px; font-weight:700; color:var(--suave);
+          text-transform:uppercase; letter-spacing:.05em; margin-bottom:7px}
+
+  /* Dónde estoy: es lo que más se mira y lo que menos cambia. */
+  .lugar{
+    display:flex; align-items:center; gap:10px; width:100%;
+    background:var(--acento-sw); border:1px solid #c3d8f2; border-radius:var(--r);
+    padding:13px 14px; text-align:left; min-height:60px; margin-bottom:14px;
+  }
+  .lugar b{font-size:17px; display:block}
+  .lugar span{font-size:12.5px; color:var(--suave)}
+  .lugar .cambiar{margin-left:auto; color:var(--acento); font-weight:600; font-size:14px}
+
+  /* Foto */
+  .zona-foto{
+    position:relative; width:100%; aspect-ratio:4/3; border-radius:var(--r);
+    border:2px dashed var(--linea); background:var(--bg);
+    display:grid; place-items:center; overflow:hidden; text-align:center;
+    color:var(--suave); padding:16px;
+  }
+  .zona-foto img{width:100%; height:100%; object-fit:cover}
+  .zona-foto .camara{font-size:44px; line-height:1}
+  .fila-foto{display:flex; gap:9px; margin-top:9px}
+  .fila-foto button{flex:1}
+
+  .cant{display:flex; gap:9px; align-items:stretch}
+  .cant input{text-align:center; font-size:22px; font-weight:600}
+  .cant button{width:62px; font-size:24px; font-weight:700; padding:0}
+
+  .segmento{display:flex; gap:8px}
+  .segmento button{flex:1; padding:12px 6px; min-height:50px; font-size:15px}
+  .segmento button[aria-pressed="true"]{
+    background:var(--acento); border-color:var(--acento); color:#fff; font-weight:600}
+
+  nav.pie{
+    position:sticky; bottom:0; background:var(--panel);
+    border-top:1px solid var(--linea); display:flex;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+    gap:8px; z-index:10;
+  }
+  nav.pie button{flex:1; border:0; background:transparent; min-height:56px;
+                 font-size:14px; color:var(--suave); padding:6px}
+  nav.pie button[aria-pressed="true"]{color:var(--acento); font-weight:700}
+  nav.pie .cuenta{
+    display:inline-block; min-width:22px; padding:1px 6px; border-radius:99px;
+    background:var(--acento); color:#fff; font-size:12px; font-weight:700;
+  }
+
+  .ficha{
+    display:grid; grid-template-columns:62px 1fr auto; gap:11px;
+    align-items:center; padding:11px 0; border-bottom:1px solid var(--linea);
+  }
+  .ficha img, .ficha .sinfoto{
+    width:62px; height:62px; border-radius:10px; object-fit:cover;
+    background:var(--bg); border:1px solid var(--linea);
+  }
+  .ficha .sinfoto{display:grid; place-items:center; font-size:11px; color:var(--suave)}
+  .ficha h3{margin:0; font-size:16px; font-weight:600}
+  .ficha .donde{font-size:12.5px; color:var(--suave)}
+  .ficha .n{font-size:19px; font-weight:700; text-align:right}
+
+  .aviso{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:84px;
+    background:var(--ok); color:#fff; padding:12px 18px; border-radius:99px;
+    font-size:15px; font-weight:600; display:none; z-index:50;
+    box-shadow:0 4px 16px rgba(0,0,0,.25); max-width:92vw; text-align:center;
+  }
+  .aviso.mal{background:var(--alerta)}
+  .error{background:var(--alerta-sw); color:var(--alerta); padding:11px 13px;
+         border-radius:10px; font-size:14.5px; display:none; margin-bottom:11px}
+  .vacio{text-align:center; color:var(--suave); padding:44px 20px; font-size:15px}
+  .sutil{font-size:13px; color:var(--suave)}
+  dialog{
+    border:0; border-radius:var(--r); padding:0; width:min(520px, 94vw);
+    background:var(--panel); color:var(--texto);
+  }
+  dialog::backdrop{background:rgba(10,14,20,.55)}
+  .dlg-cuerpo{padding:18px}
+  .dlg-pie{display:flex; gap:9px; padding:0 18px 18px}
+  .dlg-pie button{flex:1}
+  .recientes{display:flex; flex-wrap:wrap; gap:7px; margin-top:9px}
+  .recientes button{padding:9px 13px; min-height:44px; font-size:14px}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="logo-aconcagua.png" alt="Aconcagua">
+  <strong style="font-size:15px">Relevar pañol</strong>
+  <span class="quien" id="quien"></span>
+</header>
+
+<main>
+
+  <!-- ============ pantalla: quién releva ============ -->
+  <section id="p-quien" hidden>
+    <div class="tarjeta">
+      <div class="rotulo">Antes de empezar</div>
+      <p style="margin-top:0">Poné tu nombre. Va a quedar en cada ficha que cargues,
+         así después se sabe a quién preguntarle.</p>
+      <input id="iQuien" type="text" placeholder="Tu nombre y apellido" autocomplete="name">
+      <button class="pri gigante" id="btnQuien" style="margin-top:12px">Empezar</button>
+    </div>
+    <p class="sutil" style="text-align:center">
+      Todo se guarda en este teléfono. No se manda nada a ningún lado hasta
+      que vos toques <b>Exportar</b>.
+    </p>
+  </section>
+
+  <!-- ============ pantalla: cargar ============ -->
+  <section id="p-cargar" hidden>
+    <button class="lugar" id="btnLugar">
+      <span>📍</span>
+      <span style="min-width:0">
+        <b id="lugarActual">Sin definir</b>
+        <span>Dónde estás parado ahora</span>
+      </span>
+      <span class="cambiar">Cambiar</span>
+    </button>
+
+    <div class="error" id="errCargar"></div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Foto</div>
+      <label class="zona-foto" id="zonaFoto" for="iFoto">
+        <div id="sinFoto">
+          <div class="camara">📷</div>
+          <div style="margin-top:8px">Tocá para sacar la foto</div>
+          <div class="sutil" style="margin-top:4px">La pieza sola, sobre el banco</div>
+        </div>
+        <img id="vistaFoto" hidden alt="">
+      </label>
+      <input type="file" id="iFoto" accept="image/*" capture="environment" hidden>
+      <div class="fila-foto" id="filaFoto" hidden>
+        <button type="button" id="btnOtraFoto">Sacar otra</button>
+        <button type="button" id="btnBorrarFoto">Quitar</button>
+      </div>
+      <div class="sutil" id="pesoFoto" style="margin-top:7px"></div>
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Cómo se llama</div>
+      <input id="iNombre" type="text" placeholder="retén grande del doble faz"
+             autocomplete="off" autocapitalize="sentences">
+      <div class="sutil" style="margin-top:7px">
+        Como lo dirías en voz alta. Podés usar el micrófono del teclado.
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Cuántos hay</div>
+      <div class="cant">
+        <button type="button" id="btnMenos">−</button>
+        <input id="iCantidad" type="number" inputmode="numeric" min="0" step="1" value="1">
+        <button type="button" id="btnMas">+</button>
+      </div>
+      <div class="sutil" style="margin-top:7px">
+        Si no los contaste, dejá 0 y seguí. Se completa después.
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Qué es</div>
+      <div class="segmento" id="segClase">
+        <button type="button" data-clase="repuesto"    aria-pressed="true">Repuesto</button>
+        <button type="button" data-clase="herramienta" aria-pressed="false">Herramienta</button>
+        <button type="button" data-clase="insumo"      aria-pressed="false">Insumo</button>
+      </div>
+    </div>
+
+    <button class="pri gigante" id="btnGuardar">Guardar y cargar la próxima</button>
+    <p class="sutil" style="text-align:center; margin-top:10px" id="pieCargar"></p>
+  </section>
+
+  <!-- ============ pantalla: lista ============ -->
+  <section id="p-lista" hidden>
+    <input id="iBuscarLista" type="search" placeholder="Buscar en lo cargado"
+           style="margin-bottom:12px">
+    <div id="listaFichas"></div>
+  </section>
+
+  <!-- ============ pantalla: exportar ============ -->
+  <section id="p-exportar" hidden>
+    <div class="tarjeta">
+      <div class="rotulo">Lo que tenés cargado</div>
+      <p style="font-size:30px; font-weight:700; margin:6px 0" id="expCuenta">0</p>
+      <p class="sutil" id="expDetalle"></p>
+      <button class="pri gigante" id="btnExportar" style="margin-top:12px">
+        Exportar todo a un archivo</button>
+      <p class="sutil" style="margin-top:11px">
+        Se baja un solo archivo <b>.zip</b> con las fichas y las fotos adentro.
+        Mandalo por WhatsApp, Drive o mail a quien lo va a importar.
+      </p>
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Después de exportar</div>
+      <p style="margin-top:0" class="sutil">
+        Lo cargado <b>no se borra solo</b>. Recién cuando el que importa te
+        confirme que entró todo, podés vaciar el teléfono para empezar otro
+        sector.
+      </p>
+      <button id="btnVaciar" style="width:100%; color:var(--alerta)">
+        Vaciar todo lo cargado</button>
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Quién releva</div>
+      <input id="iQuienCambiar" type="text">
+      <button id="btnQuienCambiar" style="width:100%; margin-top:10px">Guardar nombre</button>
+    </div>
+  </section>
+
+</main>
+
+<nav class="pie">
+  <button id="tabCargar"   aria-pressed="true">Cargar</button>
+  <button id="tabLista"    aria-pressed="false">Cargado <span class="cuenta" id="cuentaLista">0</span></button>
+  <button id="tabExportar" aria-pressed="false">Exportar</button>
+</nav>
+
+<dialog id="dlgLugar">
+  <div class="dlg-cuerpo">
+    <div class="rotulo">Dónde estás</div>
+    <input id="iLugar" type="text" placeholder="Sector A / Estantería 2 / Casillero 3">
+    <div class="sutil" style="margin-top:8px">
+      Escribilo como esté escrito en el estante. Queda fijo hasta que lo cambies.
+    </div>
+    <div class="recientes" id="lugaresRecientes"></div>
+  </div>
+  <div class="dlg-pie">
+    <button type="button" id="btnLugarCancelar">Cancelar</button>
+    <button type="button" class="pri" id="btnLugarOk">Listo</button>
+  </div>
+</dialog>
+
+<dialog id="dlgFicha">
+  <div class="dlg-cuerpo">
+    <div class="rotulo" id="fichaRotulo">Ficha</div>
+    <div id="fichaDetalle"></div>
+  </div>
+  <div class="dlg-pie">
+    <button type="button" id="btnFichaBorrar" style="color:var(--alerta)">Borrar</button>
+    <button type="button" class="pri" id="btnFichaCerrar">Cerrar</button>
+  </div>
+</dialog>
+
+<div class="aviso" id="aviso"></div>
+
+<script>
+'use strict';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+/* =====================================================================
+ * Guardado
+ *
+ * IndexedDB y no localStorage: las fotos son blobs de cientos de KB y
+ * localStorage aguanta 5 MB en total y solo texto. Con 300 piezas esto
+ * pesa decenas de megas.
+ * ===================================================================== */
+const BD = 'relevamiento';
+let bd = null;
+
+function abrirBase(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(BD, 1);
+    req.onupgradeneeded = ev => {
+      const d = ev.target.result;
+      if (!d.objectStoreNames.contains('fichas')){
+        d.createObjectStore('fichas', { keyPath:'id', autoIncrement:true });
+      }
+      if (!d.objectStoreNames.contains('ajustes')){
+        d.createObjectStore('ajustes', { keyPath:'clave' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+const tx = (almacen, modo) => bd.transaction(almacen, modo).objectStore(almacen);
+const pedir = req => new Promise((res, rej) => {
+  req.onsuccess = () => res(req.result);
+  req.onerror = () => rej(req.error);
+});
+
+const guardarFicha  = f => pedir(tx('fichas', 'readwrite').put(f));
+const borrarFicha   = id => pedir(tx('fichas', 'readwrite').delete(id));
+const todasLasFichas= () => pedir(tx('fichas', 'readonly').getAll());
+const leerAjuste    = async clave => (await pedir(tx('ajustes','readonly').get(clave)))?.valor;
+const grabarAjuste  = (clave, valor) => pedir(tx('ajustes','readwrite').put({ clave, valor }));
+
+/* =====================================================================
+ * Estado en memoria
+ * ===================================================================== */
+let quien = '';
+let lugar = '';
+let lugaresUsados = [];
+let fotoActual = null;       // Blob ya achicado
+let claseActual = 'repuesto';
+let fichas = [];
+let solapa = 'cargar';
+
+function avisar(texto, mal = false){
+  const a = $('#aviso');
+  a.textContent = texto;
+  a.className = 'aviso' + (mal ? ' mal' : '');
+  a.style.display = 'block';
+  clearTimeout(a._t);
+  a._t = setTimeout(() => { a.style.display = 'none'; }, mal ? 4200 : 2200);
+}
+
+/* =====================================================================
+ * Foto
+ *
+ * Se achica ACÁ, antes de guardar. Una foto de celular pesa 3 a 6 MB;
+ * 800 piezas son varios gigabytes que después no hay forma de mandar.
+ * Achicada a 1280 px de lado mayor queda en 100-250 KB y se ve perfecto
+ * para reconocer una pieza.
+ *
+ * De paso, dibujarla en un canvas aplica la rotación EXIF: si no, las
+ * fotos verticales llegan acostadas del lado del servidor.
+ * ===================================================================== */
+const LADO_MAYOR = 1280;
+
+function achicar(archivo){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(archivo);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const escala = Math.min(1, LADO_MAYOR / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width  = Math.max(1, Math.round(img.width  * escala));
+      c.height = Math.max(1, Math.round(img.height * escala));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => b ? resolve(b) : reject(new Error('No se pudo procesar la foto')),
+               'image/jpeg', 0.8);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la foto')); };
+    img.src = url;
+  });
+}
+
+const kb = n => Math.round(n / 1024) + ' KB';
+// Debajo del mega se muestra en KB: "0.0 MB de fotos" después de sacar
+// una foto parece que no se guardó nada.
+const mb = n => n < 1048576 ? kb(n) : (n / 1048576).toFixed(1) + ' MB';
+
+async function tomarFoto(ev){
+  const archivo = ev.target.files && ev.target.files[0];
+  if (!archivo) return;
+  $('#pesoFoto').textContent = 'procesando...';
+  try{
+    const chica = await achicar(archivo);
+    fotoActual = chica;
+    const url = URL.createObjectURL(chica);
+    $('#vistaFoto').src = url;
+    $('#vistaFoto').hidden = false;
+    $('#sinFoto').hidden = true;
+    $('#filaFoto').hidden = false;
+    $('#pesoFoto').textContent = `${kb(archivo.size)} → ${kb(chica.size)}`;
+  }catch(e){
+    $('#pesoFoto').textContent = e.message;
+    avisar(e.message, true);
+  }
+  ev.target.value = '';   // para poder sacar dos fotos seguidas
+}
+
+function limpiarFoto(){
+  fotoActual = null;
+  $('#vistaFoto').hidden = true;
+  $('#vistaFoto').removeAttribute('src');
+  $('#sinFoto').hidden = false;
+  $('#filaFoto').hidden = true;
+  $('#pesoFoto').textContent = '';
+}
+
+/* =====================================================================
+ * Cargar una ficha
+ * ===================================================================== */
+async function guardar(){
+  const err = $('#errCargar');
+  err.style.display = 'none';
+  const nombre = $('#iNombre').value.trim();
+
+  if (nombre.length < 3){
+    err.textContent = 'Poné el nombre de la pieza (3 letras o más).';
+    err.style.display = 'block';
+    $('#iNombre').focus();
+    return;
+  }
+  if (!lugar){
+    err.textContent = 'Primero decí dónde estás parado, arriba de todo.';
+    err.style.display = 'block';
+    return;
+  }
+
+  const ficha = {
+    nombre,
+    cantidad: Number($('#iCantidad').value) || 0,
+    clase: claseActual,
+    ubicacion: lugar,
+    relevadoPor: quien,
+    momento: new Date().toISOString(),
+    foto: fotoActual || null
+  };
+
+  try{
+    await guardarFicha(ficha);
+  }catch(e){
+    err.textContent = 'No se pudo guardar: ' + e.message;
+    err.style.display = 'block';
+    return;
+  }
+
+  await refrescarFichas();
+  avisar(`Guardado. Van ${fichas.length}.`);
+
+  // Se limpia todo menos el lugar y la clase: lo normal es cargar varias
+  // piezas parecidas del mismo estante, una atrás de la otra.
+  $('#iNombre').value = '';
+  $('#iCantidad').value = 1;
+  limpiarFoto();
+  $('#iNombre').focus();
+
+  // Recordatorio de exportar. Perder 50 fichas porque el navegador
+  // limpió el almacenamiento es un golpe del que no se vuelve.
+  if (fichas.length > 0 && fichas.length % 25 === 0){
+    avisar(`Van ${fichas.length}. Conviene exportar por las dudas.`, true);
+  }
+}
+
+async function refrescarFichas(){
+  fichas = (await todasLasFichas()).sort((a, b) => b.id - a.id);
+  $('#cuentaLista').textContent = fichas.length;
+  const conFoto = fichas.filter(f => f.foto).length;
+  const bytes = fichas.reduce((s, f) => s + (f.foto ? f.foto.size : 0), 0);
+  $('#expCuenta').textContent = fichas.length + (fichas.length === 1 ? ' pieza' : ' piezas');
+  $('#expDetalle').textContent =
+    `${conFoto} con foto · ${mb(bytes)} de fotos · ${fichas.length - conFoto} sin foto`;
+  $('#pieCargar').textContent = fichas.length
+    ? `Llevás ${fichas.length} cargadas en este teléfono.` : '';
+  if (solapa === 'lista') pintarLista();
+}
+
+function pintarLista(){
+  const filtro = $('#iBuscarLista').value.trim().toLowerCase();
+  const vistas = filtro
+    ? fichas.filter(f => (f.nombre + ' ' + f.ubicacion).toLowerCase().includes(filtro))
+    : fichas;
+
+  if (!vistas.length){
+    $('#listaFichas').innerHTML = fichas.length
+      ? '<div class="vacio">Nada con eso.</div>'
+      : '<div class="vacio">Todavía no cargaste nada.<br>Andá a <b>Cargar</b>.</div>';
+    return;
+  }
+
+  $('#listaFichas').innerHTML = vistas.map(f => `
+    <div class="ficha" data-ficha="${f.id}">
+      ${f.foto ? `<img alt="" data-blob="${f.id}">`
+               : '<div class="sinfoto">sin<br>foto</div>'}
+      <div style="min-width:0">
+        <h3>${esc(f.nombre)}</h3>
+        <div class="donde">${esc(f.ubicacion)} · ${esc(f.clase)}</div>
+      </div>
+      <div class="n">${f.cantidad}</div>
+    </div>`).join('');
+
+  // Las URLs de los blobs se crean después de pintar y se liberan al
+  // repintar: si no, cada repintado deja objetos colgados en memoria y
+  // el teléfono se va poniendo lento.
+  for (const img of document.querySelectorAll('[data-blob]')){
+    const f = fichas.find(x => x.id === Number(img.dataset.blob));
+    if (f && f.foto) img.src = URL.createObjectURL(f.foto);
+  }
+}
+
+/* =====================================================================
+ * Exportar: un ZIP escrito a mano
+ *
+ * Sin librerías: la app tiene que abrir sin señal, así que no puede
+ * bajar nada de un CDN, y meter una librería entera adentro para hacer
+ * un ZIP sin comprimir es más código del que hace falta.
+ *
+ * Método "store" (sin comprimir) a propósito: los JPEG ya vienen
+ * comprimidos, deflate sobre eso no ahorra casi nada y cuesta segundos
+ * de CPU en un celular viejo con 300 fotos.
+ * ===================================================================== */
+const TABLA_CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++){
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = TABLA_CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+/** Fecha y hora en el formato de DOS que usa el ZIP. */
+function fechaDos(d){
+  const hora = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const fecha = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  return { hora, fecha };
+}
+
+async function armarZip(entradas){
+  const cod = new TextEncoder();
+  const partes = [];
+  const central = [];
+  let offset = 0;
+  const { hora, fecha } = fechaDos(new Date());
+
+  for (const e of entradas){
+    const nombre = cod.encode(e.nombre);
+    const datos = new Uint8Array(await e.blob.arrayBuffer());
+    const crc = crc32(datos);
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);   // firma
+    local.setUint16(4, 20, true);           // versión necesaria
+    // Bit 11: los nombres van en UTF-8. Sin esto, un archivo con acentos
+    // se descomprime con el nombre roto en Windows.
+    local.setUint16(6, 0x0800, true);
+    local.setUint16(8, 0, true);            // método 0 = sin comprimir
+    local.setUint16(10, hora, true);
+    local.setUint16(12, fecha, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, datos.length, true);
+    local.setUint32(22, datos.length, true);
+    local.setUint16(26, nombre.length, true);
+    local.setUint16(28, 0, true);
+
+    partes.push(new Uint8Array(local.buffer), nombre, datos);
+
+    const cen = new DataView(new ArrayBuffer(46));
+    cen.setUint32(0, 0x02014b50, true);
+    cen.setUint16(4, 20, true);
+    cen.setUint16(6, 20, true);
+    cen.setUint16(8, 0x0800, true);
+    cen.setUint16(10, 0, true);
+    cen.setUint16(12, hora, true);
+    cen.setUint16(14, fecha, true);
+    cen.setUint32(16, crc, true);
+    cen.setUint32(20, datos.length, true);
+    cen.setUint32(24, datos.length, true);
+    cen.setUint16(28, nombre.length, true);
+    cen.setUint32(42, offset, true);
+    central.push(new Uint8Array(cen.buffer), nombre);
+
+    offset += 30 + nombre.length + datos.length;
+  }
+
+  const largoCentral = central.reduce((s, p) => s + p.length, 0);
+  const fin = new DataView(new ArrayBuffer(22));
+  fin.setUint32(0, 0x06054b50, true);
+  fin.setUint16(8, entradas.length, true);
+  fin.setUint16(10, entradas.length, true);
+  fin.setUint32(12, largoCentral, true);
+  fin.setUint32(16, offset, true);
+
+  return new Blob([...partes, ...central, new Uint8Array(fin.buffer)],
+                  { type: 'application/zip' });
+}
+
+async function exportar(){
+  if (!fichas.length) return avisar('No hay nada para exportar.', true);
+  const btn = $('#btnExportar');
+  btn.disabled = true;
+  btn.textContent = 'Armando el archivo...';
+
+  try{
+    const entradas = [];
+    const listado = [];
+    // Orden de carga, no el de la pantalla: así el número de foto sigue
+    // el recorrido que hizo la persona por el pañol.
+    const enOrden = [...fichas].sort((a, b) => a.id - b.id);
+
+    enOrden.forEach((f, i) => {
+      const nombreFoto = f.foto ? `fotos/${String(i + 1).padStart(4, '0')}.jpg` : null;
+      if (f.foto) entradas.push({ nombre: nombreFoto, blob: f.foto });
+      listado.push({
+        nombre: f.nombre,
+        cantidad: f.cantidad,
+        clase: f.clase,
+        ubicacion: f.ubicacion,
+        relevadoPor: f.relevadoPor,
+        momento: f.momento,
+        foto: nombreFoto
+      });
+    });
+
+    const manifiesto = {
+      version: 1,
+      generadoEn: new Date().toISOString(),
+      relevadoPor: quien,
+      totalPiezas: listado.length,
+      piezas: listado
+    };
+    entradas.unshift({
+      nombre: 'relevamiento.json',
+      blob: new Blob([JSON.stringify(manifiesto, null, 2)], { type:'application/json' })
+    });
+
+    const zip = await armarZip(entradas);
+    const sello = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zip);
+    a.download = `relevamiento-${(quien || 'panol').split(' ')[0].toLowerCase()}-${sello}.zip`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+
+    avisar(`Listo: ${listado.length} piezas, ${mb(zip.size)}.`);
+    await grabarAjuste('ultimaExportacion', new Date().toISOString());
+  }catch(e){
+    avisar('No se pudo exportar: ' + e.message, true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Exportar todo a un archivo';
+  }
+}
+
+/* =====================================================================
+ * Lugar
+ * ===================================================================== */
+function abrirLugar(){
+  $('#iLugar').value = lugar;
+  $('#lugaresRecientes').innerHTML = lugaresUsados
+    .map(l => `<button type="button" data-lugar="${esc(l)}">${esc(l)}</button>`).join('');
+  $('#dlgLugar').showModal();
+  setTimeout(() => $('#iLugar').focus(), 50);
+}
+
+async function fijarLugar(valor){
+  lugar = String(valor || '').trim();
+  $('#lugarActual').textContent = lugar || 'Sin definir';
+  if (lugar){
+    lugaresUsados = [lugar, ...lugaresUsados.filter(x => x !== lugar)].slice(0, 8);
+    await grabarAjuste('lugar', lugar);
+    await grabarAjuste('lugaresUsados', lugaresUsados);
+  }
+  $('#dlgLugar').close();
+}
+
+/* =====================================================================
+ * Navegación
+ * ===================================================================== */
+function mostrar(cual){
+  solapa = cual;
+  for (const s of ['quien','cargar','lista','exportar']){
+    $('#p-' + s).hidden = s !== cual;
+  }
+  $('#tabCargar').setAttribute('aria-pressed',   String(cual === 'cargar'));
+  $('#tabLista').setAttribute('aria-pressed',    String(cual === 'lista'));
+  $('#tabExportar').setAttribute('aria-pressed', String(cual === 'exportar'));
+  document.querySelector('nav.pie').hidden = cual === 'quien';
+  if (cual === 'lista') pintarLista();
+  window.scrollTo(0, 0);
+}
+
+/* =====================================================================
+ * Arranque
+ * ===================================================================== */
+async function arrancar(){
+  try{
+    bd = await abrirBase();
+  }catch(e){
+    document.body.innerHTML =
+      '<main><div class="tarjeta"><b>Este navegador no deja guardar datos.</b>' +
+      '<p>Suele pasar en modo incógnito. Abrí la app en una pestaña normal.</p></div></main>';
+    return;
+  }
+
+  // Le pide al navegador que NO borre estos datos si le falta espacio.
+  // No siempre lo concede, pero cuando lo hace evita el peor final
+  // posible: 300 fichas relevadas que desaparecen solas.
+  if (navigator.storage && navigator.storage.persist){
+    try{ await navigator.storage.persist(); }catch(e){ /* da igual */ }
+  }
+
+  quien = (await leerAjuste('quien')) || '';
+  lugar = (await leerAjuste('lugar')) || '';
+  lugaresUsados = (await leerAjuste('lugaresUsados')) || [];
+  $('#lugarActual').textContent = lugar || 'Sin definir';
+  $('#quien').textContent = quien;
+  $('#iQuienCambiar').value = quien;
+
+  await refrescarFichas();
+  mostrar(quien ? 'cargar' : 'quien');
+
+  if ('serviceWorker' in navigator){
+    try{ await navigator.serviceWorker.register('sw.js'); }catch(e){ /* sin offline */ }
+  }
+}
+
+/* ------------------------------ eventos ---------------------------- */
+$('#btnQuien').addEventListener('click', async () => {
+  const n = $('#iQuien').value.trim();
+  if (n.length < 2) return avisar('Poné tu nombre.', true);
+  quien = n;
+  await grabarAjuste('quien', quien);
+  $('#quien').textContent = quien;
+  $('#iQuienCambiar').value = quien;
+  mostrar('cargar');
+});
+$('#btnQuienCambiar').addEventListener('click', async () => {
+  const n = $('#iQuienCambiar').value.trim();
+  if (n.length < 2) return avisar('Poné tu nombre.', true);
+  quien = n;
+  await grabarAjuste('quien', quien);
+  $('#quien').textContent = quien;
+  avisar('Nombre guardado.');
+});
+
+$('#iFoto').addEventListener('change', tomarFoto);
+$('#btnOtraFoto').addEventListener('click', () => $('#iFoto').click());
+$('#btnBorrarFoto').addEventListener('click', limpiarFoto);
+
+$('#btnMenos').addEventListener('click', () => {
+  $('#iCantidad').value = Math.max(0, (Number($('#iCantidad').value) || 0) - 1);
+});
+$('#btnMas').addEventListener('click', () => {
+  $('#iCantidad').value = (Number($('#iCantidad').value) || 0) + 1;
+});
+
+$('#segClase').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-clase]');
+  if (!b) return;
+  claseActual = b.dataset.clase;
+  for (const x of $('#segClase').children){
+    x.setAttribute('aria-pressed', String(x === b));
+  }
+});
+
+$('#btnGuardar').addEventListener('click', guardar);
+$('#btnLugar').addEventListener('click', abrirLugar);
+$('#btnLugarOk').addEventListener('click', () => fijarLugar($('#iLugar').value));
+$('#btnLugarCancelar').addEventListener('click', () => $('#dlgLugar').close());
+$('#lugaresRecientes').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-lugar]');
+  if (b) fijarLugar(b.dataset.lugar);
+});
+
+$('#iBuscarLista').addEventListener('input', pintarLista);
+$('#listaFichas').addEventListener('click', ev => {
+  const d = ev.target.closest('[data-ficha]');
+  if (!d) return;
+  const f = fichas.find(x => x.id === Number(d.dataset.ficha));
+  if (!f) return;
+  $('#fichaRotulo').textContent = f.nombre;
+  $('#fichaDetalle').innerHTML = `
+    ${f.foto ? '<img id="fotoDetalle" style="width:100%; border-radius:12px; margin-bottom:12px">' : ''}
+    <div class="sutil">Dónde</div><div>${esc(f.ubicacion)}</div>
+    <div class="sutil" style="margin-top:9px">Cantidad</div><div>${f.cantidad} · ${esc(f.clase)}</div>
+    <div class="sutil" style="margin-top:9px">Relevó</div><div>${esc(f.relevadoPor || '—')}</div>`;
+  if (f.foto) $('#fotoDetalle').src = URL.createObjectURL(f.foto);
+  $('#dlgFicha').dataset.id = f.id;
+  $('#dlgFicha').showModal();
+});
+$('#btnFichaCerrar').addEventListener('click', () => $('#dlgFicha').close());
+$('#btnFichaBorrar').addEventListener('click', async () => {
+  const id = Number($('#dlgFicha').dataset.id);
+  if (!confirm('¿Borrar esta ficha?')) return;
+  await borrarFicha(id);
+  $('#dlgFicha').close();
+  await refrescarFichas();
+  avisar('Borrada.');
+});
+
+$('#btnExportar').addEventListener('click', exportar);
+$('#btnVaciar').addEventListener('click', async () => {
+  if (!fichas.length) return avisar('No hay nada cargado.');
+  if (!confirm(`Vas a borrar ${fichas.length} fichas de este teléfono. ` +
+               `¿Ya confirmaron que se importaron bien?`)) return;
+  if (!confirm('Última chance: esto no se puede deshacer.')) return;
+  await pedir(tx('fichas', 'readwrite').clear());
+  await refrescarFichas();
+  avisar('Teléfono vacío. Listo para otro sector.');
+});
+
+$('#tabCargar').addEventListener('click',   () => mostrar('cargar'));
+$('#tabLista').addEventListener('click',    () => mostrar('lista'));
+$('#tabExportar').addEventListener('click', () => mostrar('exportar'));
+
+// Al final: las funciones se izan, los `let` de arriba no.
+arrancar();
+</script>
+</body>
+</html>
